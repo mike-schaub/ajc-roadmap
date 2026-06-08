@@ -7,7 +7,7 @@ import type { Squad } from './SquadColumn'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',    color: '#3b82f6' },
-  { key: 'EPS',  name: 'Emerging Products', color: '#8b5cf6' },
+  { key: 'EPS',  name: 'Emerging Products', color: '#1AA368' },
   { key: 'MPS',  name: 'Monetization',      color: '#f59e0b' },
   { key: 'MA',   name: 'Mobile App',        color: '#10b981' },
 ]
