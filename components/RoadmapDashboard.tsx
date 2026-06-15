@@ -35,7 +35,7 @@ export function RoadmapDashboard({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap</h1>
+        <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap Q2 2026</h1>
         {fetchedAt && (
           <span className="text-[11px] text-slate-400">
             Updated {new Date(fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
