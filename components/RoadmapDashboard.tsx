@@ -7,9 +7,9 @@ import type { Squad } from './SquadColumn'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',    color: '#3b82f6' },
-  { key: 'EPS',  name: 'Emerging Products', color: '#8b5cf6' },
+  { key: 'EPS',  name: 'Emerging Products', color: '#1AA368' },
   { key: 'MPS',  name: 'Monetization',      color: '#f59e0b' },
-  { key: 'MA',   name: 'Mobile App',        color: '#10b981' },
+  { key: 'MA',   name: 'Mobile App',        color: '#004FFF' },
 ]
 
 type Filter = 'all' | 'todo' | 'inprog' | 'done'
@@ -35,7 +35,7 @@ export function RoadmapDashboard({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap</h1>
+        <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap Q2 2026</h1>
         {fetchedAt && (
           <span className="text-[11px] text-slate-400">
             Updated {new Date(fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
