@@ -21,6 +21,7 @@ function fmt(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+
 export function EpicCard({ epic }: { epic: JiraEpic }) {
   const sc = statusClass(epic.fields.status.statusCategory.key)
   const priority = (epic.fields.priority?.name ?? 'low').toLowerCase()
