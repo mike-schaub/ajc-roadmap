@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { JiraEpic } from '@/lib/jira'
+import type { JiraEpic, JiraStory } from '@/lib/jira'
+import { statusClass } from '@/lib/jira'
 import { SquadColumn } from './SquadColumn'
 import type { Squad } from './SquadColumn'
 import { GanttView } from './GanttView'
@@ -18,11 +19,15 @@ type Tab = 'board' | 'gantt'
 
 export function RoadmapDashboard({
   grouped,
+  storiesByEpic,
+  commentSummaries,
   fetchedAt,
   today,
   error,
 }: {
   grouped: Record<string, JiraEpic[]>
+  storiesByEpic: Record<string, JiraStory[]>
+  commentSummaries: Record<string, string | null>
   fetchedAt: string | null
   today: string
   error: string | null
@@ -36,6 +41,19 @@ export function RoadmapDashboard({
     { label: 'In Progress', value: 'inprog' },
     { label: 'Done', value: 'done' },
   ]
+
+  // Board: hide done epics with no due date, or due date before today
+  const todayMs = new Date(today).getTime()
+  const boardGrouped = Object.fromEntries(
+    Object.entries(grouped).map(([k, epics]) => [
+      k,
+      epics.filter(epic => {
+        if (statusClass(epic.fields.status.statusCategory.key) !== 'done') return true
+        if (!epic.fields.duedate) return false
+        return new Date(epic.fields.duedate).getTime() >= todayMs
+      }),
+    ])
+  ) as Record<string, JiraEpic[]>
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -95,7 +113,9 @@ export function RoadmapDashboard({
               <SquadColumn
                 key={squad.key}
                 squad={squad}
-                epics={grouped[squad.key] ?? []}
+                epics={boardGrouped[squad.key] ?? []}
+                storiesByEpic={storiesByEpic}
+                commentSummaries={commentSummaries}
                 filter={filter}
               />
             ))}

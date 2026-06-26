@@ -73,13 +73,24 @@ export function GanttView({
 
   const dated = rows
     .filter(({ epic }) => epic.fields.startdate || epic.fields.duedate)
+    .filter(({ epic }) => {
+      // Hide done epics with no due date, or due date outside the visible range
+      if (statusClass(epic.fields.status.statusCategory.key) !== 'done') return true
+      if (!epic.fields.duedate) return false
+      const due = new Date(epic.fields.duedate)
+      return due >= rangeStart && due <= rangeEnd
+    })
     .sort((a, b) => {
       const aDate = a.epic.fields.startdate ?? a.epic.fields.duedate ?? ''
       const bDate = b.epic.fields.startdate ?? b.epic.fields.duedate ?? ''
       return aDate.localeCompare(bDate)
     })
 
-  const undated = rows.filter(({ epic }) => !epic.fields.startdate && !epic.fields.duedate)
+  const undated = rows.filter(({ epic }) =>
+    !epic.fields.startdate &&
+    !epic.fields.duedate &&
+    statusClass(epic.fields.status.statusCategory.key) !== 'done'
+  )
 
   return (
     <div className="px-5 pb-8">
@@ -159,11 +170,21 @@ export function GanttView({
         {dated.map(({ epic, squad }, i) => {
           const startDate = epic.fields.startdate ? new Date(epic.fields.startdate) : null
           const endDate = epic.fields.duedate ? new Date(epic.fields.duedate) : null
-          const barLeft = pct(startDate ?? rangeStart, rangeStart, rangeEnd)
-          const barRight = pct(endDate ?? rangeEnd, rangeStart, rangeEnd)
-          const barWidth = Math.max(0.5, barRight - barLeft)
           const sc = statusClass(epic.fields.status.statusCategory.key)
           const barOpacity = sc === 'todo' ? 0.4 : sc === 'done' ? 0.55 : 1
+
+          // Epics with only a due date render as a milestone marker, not a spanning bar.
+          // This avoids the misleading "started at window edge" artifact.
+          const milestoneOnly = !startDate && !!endDate
+          const milestonePct = milestoneOnly ? pct(endDate!, rangeStart, rangeEnd) : null
+
+          // For bars: if startDate is before the window, clip to 0% but drop the
+          // left border-radius to signal the bar continues off-screen.
+          const rawBarLeft = startDate ? pct(startDate, rangeStart, rangeEnd) : 0
+          const startsBeforeWindow = startDate ? startDate < rangeStart : false
+          const barLeft = Math.max(0, rawBarLeft)
+          const barRight = pct(endDate ?? rangeEnd, rangeStart, rangeEnd)
+          const barWidth = Math.max(0.5, barRight - barLeft)
 
           const dateRange = startDate && endDate
             ? `${fmtShort(epic.fields.startdate!)} → ${fmtShort(epic.fields.duedate!)}`
@@ -204,16 +225,33 @@ export function GanttView({
                     style={{ left: `${todayPct}%` }}
                   />
                 )}
-                <div
-                  className="absolute top-[8px] bottom-[8px] rounded"
-                  style={{
-                    left: `${barLeft}%`,
-                    width: `${barWidth}%`,
-                    backgroundColor: squad.color,
-                    opacity: barOpacity,
-                  }}
-                  title={dateRange}
-                />
+                {milestoneOnly ? (
+                  // Due-date-only epic: vertical diamond milestone marker
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 z-10"
+                    style={{
+                      left: `calc(${milestonePct}% - 5px)`,
+                      backgroundColor: squad.color,
+                      opacity: barOpacity,
+                    }}
+                    title={dateRange}
+                  />
+                ) : (
+                  // Spanning bar: flat left cap if start is before the window
+                  <div
+                    className="absolute top-[8px] bottom-[8px]"
+                    style={{
+                      left: `${barLeft}%`,
+                      width: `${barWidth}%`,
+                      backgroundColor: squad.color,
+                      opacity: barOpacity,
+                      borderRadius: startsBeforeWindow
+                        ? '0 4px 4px 0'
+                        : '4px',
+                    }}
+                    title={dateRange}
+                  />
+                )}
               </div>
             </div>
           )

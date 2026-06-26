@@ -1,6 +1,6 @@
 'use client'
 
-import type { JiraEpic } from '@/lib/jira'
+import type { JiraEpic, JiraStory } from '@/lib/jira'
 import { statusClass } from '@/lib/jira'
 import { EpicCard } from './EpicCard'
 
@@ -15,10 +15,14 @@ type Filter = 'all' | 'todo' | 'inprog' | 'done'
 export function SquadColumn({
   squad,
   epics,
+  storiesByEpic,
+  commentSummaries,
   filter,
 }: {
   squad: Squad
   epics: JiraEpic[]
+  storiesByEpic: Record<string, JiraStory[]>
+  commentSummaries: Record<string, string | null>
   filter: Filter
 }) {
   const visible = filter === 'all'
@@ -57,7 +61,14 @@ export function SquadColumn({
             <br />Add epics to <strong>{squad.key}</strong> in Jira.
           </div>
         )}
-        {visible.map(epic => <EpicCard key={epic.id} epic={epic} />)}
+        {visible.map(epic => (
+          <EpicCard
+            key={epic.id}
+            epic={epic}
+            stories={storiesByEpic[epic.key] ?? []}
+            commentSummaries={commentSummaries}
+          />
+        ))}
       </div>
     </div>
   )
