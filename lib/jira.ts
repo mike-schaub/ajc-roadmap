@@ -20,21 +20,9 @@ export interface JiraEpic {
   }
 }
 
-export async function fetchEpics(): Promise<JiraEpic[]> {
-  const email = process.env.JIRA_EMAIL
-  const token = process.env.JIRA_API_TOKEN
-
-  if (!email || !token) {
-    throw new Error('JIRA_EMAIL and JIRA_API_TOKEN must be set in .env.local')
-  }
-
-  const auth = Buffer.from(`${email}:${token}`).toString('base64')
-  const jql = 'project in (CORE, EPS, MPS, MA) AND issuetype = Epic ORDER BY project ASC, created DESC'
+async function jiraEpicQuery(auth: string, jql: string): Promise<JiraEpic[]> {
   const fields = 'summary,status,assignee,fixVersions,startdate,duedate,labels,priority'
-
-  const url = `${JIRA_BASE}/search/jql`
-
-  const res = await fetch(url, {
+  const res = await fetch(`${JIRA_BASE}/search/jql`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${auth}`,
@@ -44,17 +32,32 @@ export async function fetchEpics(): Promise<JiraEpic[]> {
     body: JSON.stringify({ jql, fields: fields.split(','), maxResults: 100 }),
     next: { revalidate: 300 },
   })
-
-  if (!res.ok) {
-    throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
-  }
-
+  if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
   const data = await res.json()
-
   return (data.issues || []).map((issue: JiraEpic & { self: string }) => ({
     ...issue,
     webUrl: `https://ajc.atlassian.net/browse/${issue.key}`,
   }))
+}
+
+export async function fetchEpics(): Promise<JiraEpic[]> {
+  const email = process.env.JIRA_EMAIL
+  const token = process.env.JIRA_API_TOKEN
+
+  if (!email || !token) {
+    throw new Error('JIRA_EMAIL and JIRA_API_TOKEN must be set in .env.local')
+  }
+
+  const auth = Buffer.from(`${email}:${token}`).toString('base64')
+
+  // Jira hard-caps results at 100. Fetch MPS separately so it doesn't get
+  // crowded out by CORE + EPS + MA which alone fill the limit.
+  const [main, mps] = await Promise.all([
+    jiraEpicQuery(auth, 'project in (CORE, EPS, MA) AND issuetype = Epic ORDER BY project ASC, created DESC'),
+    jiraEpicQuery(auth, 'project = MPS AND issuetype = Epic ORDER BY created DESC'),
+  ])
+
+  return [...main, ...mps]
 }
 
 export function groupByProject(epics: JiraEpic[]): Record<string, JiraEpic[]> {
