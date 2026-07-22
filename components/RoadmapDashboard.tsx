@@ -33,7 +33,7 @@ export function RoadmapDashboard({
   error: string | null
 }) {
   const [filter, setFilter] = useState<Filter>('all')
-  const [tab, setTab] = useState<Tab>('board')
+  const [tab, setTab] = useState<Tab>('gantt')
 
   const filterButtons: { label: string; value: Filter }[] = [
     { label: 'All', value: 'all' },
@@ -61,7 +61,7 @@ export function RoadmapDashboard({
         <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap</h1>
 
         <div className="flex gap-1 ml-2">
-          {(['board', 'gantt'] as Tab[]).map(t => (
+          {(['gantt', 'board'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
