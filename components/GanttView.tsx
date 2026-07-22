@@ -34,6 +34,15 @@ function fromInputDate(s: string): Date {
   return new Date(y, m - 1, d)
 }
 
+function getQuarters(year: number) {
+  return [
+    { label: 'Q1', start: new Date(year, 0, 1),  end: new Date(year, 2,  31) },
+    { label: 'Q2', start: new Date(year, 3, 1),  end: new Date(year, 5,  30) },
+    { label: 'Q3', start: new Date(year, 6, 1),  end: new Date(year, 8,  30) },
+    { label: 'Q4', start: new Date(year, 9, 1),  end: new Date(year, 11, 31) },
+  ]
+}
+
 export function GanttView({
   grouped,
   today,
@@ -42,13 +51,12 @@ export function GanttView({
   today: string
 }) {
   const todayDate = new Date(today)
+  const currentQuarterIdx = Math.floor(todayDate.getMonth() / 3)
+  const quarters = getQuarters(todayDate.getFullYear())
+  const currentQuarter = quarters[currentQuarterIdx]
 
-  // Default: today → +6 months
-  const defaultEnd = new Date(todayDate)
-  defaultEnd.setMonth(defaultEnd.getMonth() + 6)
-
-  const [rangeStart, setRangeStart] = useState(todayDate)
-  const [rangeEnd, setRangeEnd] = useState(defaultEnd)
+  const [rangeStart, setRangeStart] = useState(currentQuarter.start)
+  const [rangeEnd, setRangeEnd] = useState(currentQuarter.end)
 
   const todayPct = pct(todayDate, rangeStart, rangeEnd)
   const showToday = todayPct > 0 && todayPct < 100
@@ -74,11 +82,16 @@ export function GanttView({
   const dated = rows
     .filter(({ epic }) => epic.fields.startdate || epic.fields.duedate)
     .filter(({ epic }) => {
-      // Hide done epics with no due date, or due date outside the visible range
-      if (statusClass(epic.fields.status.statusCategory.key) !== 'done') return true
-      if (!epic.fields.duedate) return false
-      const due = new Date(epic.fields.duedate)
-      return due >= rangeStart && due <= rangeEnd
+      const sc = statusClass(epic.fields.status.statusCategory.key)
+      const start = epic.fields.startdate ? new Date(epic.fields.startdate) : null
+      const end = epic.fields.duedate ? new Date(epic.fields.duedate) : null
+      if (sc === 'done') {
+        return !!end && end >= rangeStart && end <= rangeEnd
+      }
+      // Non-done: include only if the epic overlaps the visible range
+      const endsAfterRangeStart = end ? end >= rangeStart : true
+      const startsBeforeRangeEnd = start ? start <= rangeEnd : true
+      return endsAfterRangeStart && startsBeforeRangeEnd
     })
     .sort((a, b) => {
       const aDate = a.epic.fields.startdate ?? a.epic.fields.duedate ?? ''
@@ -92,11 +105,37 @@ export function GanttView({
     statusClass(epic.fields.status.statusCategory.key) !== 'done'
   )
 
+  const activeSquadKeys = new Set(dated.map(({ squad }) => squad.key))
+
   return (
     <div className="px-5 pb-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-3 flex-wrap">
         <h2 className="text-sm font-bold text-slate-700">Timeline</h2>
+
+        {/* Quarter quick-select */}
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+          {quarters.map((q, i) => {
+            const isActive = toInputDate(rangeStart) === toInputDate(q.start) && toInputDate(rangeEnd) === toInputDate(q.end)
+            const isCurrent = i === currentQuarterIdx
+            return (
+              <button
+                key={q.label}
+                onClick={() => { setRangeStart(q.start); setRangeEnd(q.end) }}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer relative ${
+                  isActive
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {q.label}
+                {isCurrent && (
+                  <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-blue-500" />
+                )}
+              </button>
+            )
+          })}
+        </div>
 
         {/* Date range pickers */}
         <div className="flex items-center gap-2">
@@ -117,16 +156,16 @@ export function GanttView({
             className="text-[12px] text-slate-700 border border-slate-200 rounded px-2 py-1 bg-white hover:border-slate-400 focus:outline-none focus:border-slate-500 cursor-pointer"
           />
           <button
-            onClick={() => { setRangeStart(todayDate); setRangeEnd(defaultEnd) }}
+            onClick={() => { setRangeStart(currentQuarter.start); setRangeEnd(currentQuarter.end) }}
             className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 cursor-pointer"
           >
             Reset
           </button>
         </div>
 
-        {/* Squad legend */}
+        {/* Squad legend — only squads with work in the selected range */}
         <div className="ml-auto flex gap-4">
-          {SQUADS.map(s => (
+          {SQUADS.filter(s => activeSquadKeys.has(s.key)).map(s => (
             <span key={s.key} className="flex items-center gap-1.5 text-[11px] text-slate-500">
               <span className="w-2 h-2 rounded-sm inline-block flex-shrink-0" style={{ backgroundColor: s.color }} />
               {s.name}
