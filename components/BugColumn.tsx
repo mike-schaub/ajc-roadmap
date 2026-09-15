@@ -12,6 +12,27 @@ const PRIORITY_LABELS: Record<string, string> = {
   low: 'bg-slate-100 text-slate-500',
 }
 
+const PRIORITY_ORDER: Record<string, number> = {
+  critical: 0,
+  highest: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+}
+
+function priorityRank(bug: JiraBug): number {
+  return PRIORITY_ORDER[(bug.fields.priority?.name ?? 'Low').toLowerCase()] ?? PRIORITY_ORDER.low
+}
+
+// Within a status bucket, group by the exact Jira status name first, then by priority.
+function sortBugs(bugs: JiraBug[]): JiraBug[] {
+  return [...bugs].sort((a, b) => {
+    const nameCompare = a.fields.status.name.localeCompare(b.fields.status.name)
+    if (nameCompare !== 0) return nameCompare
+    return priorityRank(a) - priorityRank(b)
+  })
+}
+
 function BugCard({ bug }: { bug: JiraBug }) {
   const priorityName = bug.fields.priority?.name ?? 'Low'
   const priorityClass = PRIORITY_LABELS[priorityName.toLowerCase()] ?? PRIORITY_LABELS.low
@@ -73,9 +94,9 @@ function BugSection({
 }
 
 export function BugColumn({ squad, bugs }: { squad: Squad; bugs: JiraBug[] }) {
-  const inprog = bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'inprog')
-  const todo = bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'todo')
-  const pending = bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'done')
+  const inprog = sortBugs(bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'inprog'))
+  const todo = sortBugs(bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'todo'))
+  const pending = sortBugs(bugs.filter(b => statusClass(b.fields.status.statusCategory.key) === 'done'))
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col">
