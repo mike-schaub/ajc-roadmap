@@ -74,6 +74,88 @@ export function groupByProject(epics: JiraEpic[]): Record<string, JiraEpic[]> {
   return groups
 }
 
+export interface JiraBug {
+  id: string
+  key: string
+  webUrl: string
+  fields: {
+    summary: string
+    status: {
+      name: string
+      statusCategory: { key: string }
+    }
+    assignee: { displayName: string; avatarUrls: { '24x24': string } } | null
+    fixVersions: { name: string; released: boolean }[]
+    priority: { name: string } | null
+    updated: string
+  }
+}
+
+async function jiraBugQuery(auth: string, jql: string): Promise<JiraBug[]> {
+  const fields = 'summary,status,assignee,fixVersions,priority,updated'
+  const res = await fetch(`${JIRA_BASE}/search/jql`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ jql, fields: fields.split(','), maxResults: 100 }),
+    next: { revalidate: 300 },
+  })
+  if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
+  const data = await res.json()
+  return (data.issues || []).map((issue: JiraBug & { self: string }) => ({
+    ...issue,
+    webUrl: `https://ajc.atlassian.net/browse/${issue.key}`,
+  }))
+}
+
+export async function fetchBugs(): Promise<JiraBug[]> {
+  const email = process.env.JIRA_EMAIL
+  const token = process.env.JIRA_API_TOKEN
+  if (!email || !token) {
+    throw new Error('JIRA_EMAIL and JIRA_API_TOKEN must be set in .env.local')
+  }
+
+  const auth = Buffer.from(`${email}:${token}`).toString('base64')
+
+  // Pull open bugs plus any Done bug still tagged to an unreleased version —
+  // once that version ships, the JS filter below drops it from the board.
+  // Jira hard-caps results at 100 per query. CORE + EPS alone have ~100 matching
+  // bugs, which would crowd MPS/MA out of a single shared query — so fetch each
+  // project separately (same issue fetchEpics works around for MPS).
+  const projects = ['CORE', 'EPS', 'MPS', 'MA']
+  const perProject = await Promise.all(
+    projects.map(project =>
+      jiraBugQuery(
+        auth,
+        `project = ${project} AND issuetype = Bug AND (statusCategory != Done OR fixVersion is not EMPTY) ORDER BY priority DESC, updated DESC`
+      )
+    )
+  )
+  const bugs = perProject.flat()
+
+  return bugs.filter(bug => {
+    if (statusClass(bug.fields.status.statusCategory.key) !== 'done') return true
+    return bug.fields.fixVersions.some(v => !v.released)
+  })
+}
+
+export function groupBugsByProject(bugs: JiraBug[]): Record<string, JiraBug[]> {
+  const groups: Record<string, JiraBug[]> = {
+    CORE: [],
+    EPS: [],
+    MPS: [],
+    MA: [],
+  }
+  for (const bug of bugs) {
+    const key = bug.key.split('-')[0]
+    if (key in groups) groups[key].push(bug)
+  }
+  return groups
+}
+
 export function statusClass(categoryKey: string): 'todo' | 'inprog' | 'done' {
   const k = categoryKey.toLowerCase()
   if (k === 'done') return 'done'

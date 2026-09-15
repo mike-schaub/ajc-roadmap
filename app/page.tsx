@@ -1,7 +1,7 @@
 import { RoadmapDashboard } from '@/components/RoadmapDashboard'
-import { fetchEpics, fetchEpicChildren, groupByProject } from '@/lib/jira'
+import { fetchEpics, fetchEpicChildren, fetchBugs, groupByProject, groupBugsByProject } from '@/lib/jira'
 import { summarizeStoryComments } from '@/lib/ai'
-import type { JiraStory } from '@/lib/jira'
+import type { JiraStory, JiraBug } from '@/lib/jira'
 
 export const revalidate = 300
 
@@ -9,13 +9,15 @@ export default async function HomePage() {
   let grouped: Record<string, never[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let storiesByEpic: Record<string, JiraStory[]> = {}
   let commentSummaries: Record<string, string | null> = {}
+  let bugsGrouped: Record<string, JiraBug[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let fetchedAt: string | null = null
   let error: string | null = null
   const today = new Date().toISOString()
 
   try {
-    const epics = await fetchEpics()
+    const [epics, bugs] = await Promise.all([fetchEpics(), fetchBugs()])
     grouped = groupByProject(epics) as typeof grouped
+    bugsGrouped = groupBugsByProject(bugs)
     fetchedAt = today
 
     // Fetch all child stories in parallel
@@ -39,6 +41,7 @@ export default async function HomePage() {
       grouped={grouped}
       storiesByEpic={storiesByEpic}
       commentSummaries={commentSummaries}
+      bugsGrouped={bugsGrouped}
       fetchedAt={fetchedAt}
       today={today}
       error={error}

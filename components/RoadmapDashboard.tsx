@@ -1,26 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import type { JiraEpic, JiraStory } from '@/lib/jira'
+import type { JiraEpic, JiraStory, JiraBug } from '@/lib/jira'
 import { statusClass } from '@/lib/jira'
 import { SquadColumn } from './SquadColumn'
 import type { Squad } from './SquadColumn'
+import { BugColumn } from './BugColumn'
 import { GanttView } from './GanttView'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',     color: '#3b82f6' },
+  { key: 'MA',   name: 'Mobile App',        color: '#004FFF' },
   { key: 'EPS',  name: 'Emerging Products', color: '#1AA368' },
   { key: 'MPS',  name: 'Monetization',      color: '#f59e0b' },
-  { key: 'MA',   name: 'Mobile App',        color: '#004FFF' },
 ]
 
 type Filter = 'all' | 'todo' | 'inprog' | 'done'
-type Tab = 'board' | 'gantt'
+type Tab = 'board' | 'gantt' | 'bugs'
 
 export function RoadmapDashboard({
   grouped,
   storiesByEpic,
   commentSummaries,
+  bugsGrouped,
   fetchedAt,
   today,
   error,
@@ -28,6 +30,7 @@ export function RoadmapDashboard({
   grouped: Record<string, JiraEpic[]>
   storiesByEpic: Record<string, JiraStory[]>
   commentSummaries: Record<string, string | null>
+  bugsGrouped: Record<string, JiraBug[]>
   fetchedAt: string | null
   today: string
   error: string | null
@@ -61,7 +64,7 @@ export function RoadmapDashboard({
         <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap</h1>
 
         <div className="flex gap-1 ml-2">
-          {(['gantt', 'board'] as Tab[]).map(t => (
+          {(['gantt', 'board', 'bugs'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -71,7 +74,7 @@ export function RoadmapDashboard({
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
-              {t === 'board' ? 'Board' : 'Timeline'}
+              {t === 'board' ? 'Board' : t === 'bugs' ? 'Bugs' : 'Timeline'}
             </button>
           ))}
         </div>
@@ -126,6 +129,14 @@ export function RoadmapDashboard({
       {tab === 'gantt' && (
         <div className="pt-4">
           <GanttView grouped={grouped} today={today} />
+        </div>
+      )}
+
+      {tab === 'bugs' && (
+        <div className="grid grid-cols-2 gap-4 px-5 pt-4 pb-8">
+          {SQUADS.map(squad => (
+            <BugColumn key={squad.key} squad={squad} bugs={bugsGrouped[squad.key] ?? []} />
+          ))}
         </div>
       )}
     </div>
