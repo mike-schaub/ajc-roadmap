@@ -24,28 +24,8 @@ function priorityRank(bug: JiraBug): number {
   return PRIORITY_ORDER[(bug.fields.priority?.name ?? 'Low').toLowerCase()] ?? PRIORITY_ORDER.low
 }
 
-// Workflow order for the sub-statuses that roll up into the "In Progress" category
-// across CORE/EPS/MPS/MA — varies per project, so unmapped statuses (e.g. To Do,
-// Done) all tie and fall back to sorting by priority alone.
-const STATUS_SORT_ORDER: Record<string, number> = {
-  'in progress': 0,
-  'code review': 1,
-  'ready for test': 2,
-  'testing': 3,
-  'uat': 4,
-}
-
-function statusRank(bug: JiraBug): number {
-  return STATUS_SORT_ORDER[bug.fields.status.name.toLowerCase()] ?? 99
-}
-
-// Within a status bucket, group by workflow status first, then by priority.
 function sortBugs(bugs: JiraBug[]): JiraBug[] {
-  return [...bugs].sort((a, b) => {
-    const rankDiff = statusRank(a) - statusRank(b)
-    if (rankDiff !== 0) return rankDiff
-    return priorityRank(a) - priorityRank(b)
-  })
+  return [...bugs].sort((a, b) => priorityRank(a) - priorityRank(b))
 }
 
 function BugCard({ bug }: { bug: JiraBug }) {
