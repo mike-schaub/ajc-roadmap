@@ -4,17 +4,17 @@ import type { JiraBug } from '@/lib/jira'
 import { statusClass } from '@/lib/jira'
 import type { Squad } from './SquadColumn'
 
-const PRIORITY_DOTS: Record<string, string> = {
-  critical: 'bg-red-500',
-  highest: 'bg-red-500',
-  high: 'bg-orange-400',
-  medium: 'bg-yellow-400',
-  low: 'bg-slate-300',
+const PRIORITY_LABELS: Record<string, string> = {
+  critical: 'bg-red-50 text-red-700',
+  highest: 'bg-red-50 text-red-700',
+  high: 'bg-orange-50 text-orange-700',
+  medium: 'bg-yellow-50 text-yellow-800',
+  low: 'bg-slate-100 text-slate-500',
 }
 
 function BugCard({ bug }: { bug: JiraBug }) {
-  const priority = (bug.fields.priority?.name ?? 'low').toLowerCase()
-  const dotColor = PRIORITY_DOTS[priority] ?? PRIORITY_DOTS.low
+  const priorityName = bug.fields.priority?.name ?? 'Low'
+  const priorityClass = PRIORITY_LABELS[priorityName.toLowerCase()] ?? PRIORITY_LABELS.low
   const versions = bug.fields.fixVersions.map(v => v.name)
 
   return (
@@ -28,17 +28,18 @@ function BugCard({ bug }: { bug: JiraBug }) {
         >
           {bug.fields.summary}
         </a>
-        {versions.length > 0 && (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 bg-blue-50 text-blue-700">
-            {versions.join(', ')}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {versions.length > 0 && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap bg-blue-50 text-blue-700">
+              {versions.join(', ')}
+            </span>
+          )}
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${priorityClass}`}>
+            {priorityName}
           </span>
-        )}
+        </div>
       </div>
       <div className="flex items-center gap-2 text-[11px] text-slate-400">
-        <span
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`}
-          title={bug.fields.priority?.name ?? 'Low'}
-        />
         {bug.fields.assignee?.displayName && (
           <span className="truncate">{bug.fields.assignee.displayName}</span>
         )}
