@@ -90,8 +90,8 @@ export function BugColumn({ squad, bugs }: { squad: Squad; bugs: JiraBug[] }) {
         {bugs.length === 0 && (
           <div className="text-center text-xs text-slate-400 py-6 leading-relaxed">
             <div className="text-2xl mb-2">🐛</div>
-            <strong className="text-slate-500">No open bugs</strong>
-            <br />Nice work, {squad.key}.
+            <strong className="text-slate-500">No bugs to show</strong>
+            <br />None open, or none match the current filters.
           </div>
         )}
         <BugSection title="IN PROGRESS" badgeClass="bg-amber-50 text-amber-800" bugs={inprog} />
