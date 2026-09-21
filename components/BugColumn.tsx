@@ -1,8 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import type { JiraBug } from '@/lib/jira'
-import { statusClass } from '@/lib/jira'
+import { statusClass, isFlagged, adfToText, FLAGGED_FIELD } from '@/lib/jira'
 import type { Squad } from './SquadColumn'
+
+function timeAgo(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+  if (days <= 0) return 'today'
+  if (days === 1) return '1d ago'
+  if (days < 30) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 const PRIORITY_LABELS: Record<string, string> = {
   critical: 'bg-red-50 text-red-700',
@@ -32,6 +41,12 @@ function BugCard({ bug }: { bug: JiraBug }) {
   const priorityName = bug.fields.priority?.name ?? 'Low'
   const priorityClass = PRIORITY_LABELS[priorityName.toLowerCase()] ?? PRIORITY_LABELS.low
   const versions = bug.fields.fixVersions.map(v => v.name)
+  const flags = bug.fields[FLAGGED_FIELD]
+  const comments = bug.fields.comment?.comments ?? []
+  const total = bug.fields.comment?.total ?? comments.length
+  const truncated = total > comments.length
+
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div className="border border-slate-200 rounded-lg p-3 hover:border-slate-300 transition-all">
@@ -42,6 +57,14 @@ function BugCard({ bug }: { bug: JiraBug }) {
           rel="noreferrer"
           className="text-xs font-semibold text-slate-800 leading-snug flex-1 hover:text-blue-600"
         >
+          {isFlagged(flags) && (
+            <span
+              className="mr-1 text-[10px]"
+              title={`Flagged: ${flags.map(f => f.value).join(', ')}`}
+            >
+              🚩
+            </span>
+          )}
           {bug.fields.summary}
         </a>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -61,6 +84,42 @@ function BugCard({ bug }: { bug: JiraBug }) {
         )}
         <span className="font-mono text-slate-300 ml-auto">{bug.key}</span>
       </div>
+
+      {comments.length > 0 && (
+        <button
+          onClick={() => setExpanded(prev => !prev)}
+          className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        >
+          <svg
+            className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {expanded
+            ? 'Hide comments'
+            : `${comments.length}${truncated ? '+' : ''} comment${comments.length === 1 && !truncated ? '' : 's'}`}
+        </button>
+      )}
+
+      {expanded && comments.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-2">
+          {truncated && (
+            <p className="text-[9px] text-slate-400 italic">
+              Showing the {comments.length} most recent of {total} comments.
+            </p>
+          )}
+          {[...comments].reverse().map(c => (
+            <div key={c.id}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-600">{c.author.displayName}</span>
+                <span className="text-[9px] text-slate-300">{timeAgo(c.created)}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">{adfToText(c.body)}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

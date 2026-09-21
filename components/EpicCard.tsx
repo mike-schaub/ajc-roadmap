@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { JiraEpic, JiraStory } from '@/lib/jira'
-import { statusClass } from '@/lib/jira'
+import { statusClass, isFlagged, FLAGGED_FIELD } from '@/lib/jira'
 
 const STATUS_LABELS: Record<string, string> = {
   todo: 'bg-slate-100 text-slate-500',
@@ -62,6 +62,7 @@ export function EpicCard({
   const sc = statusClass(epic.fields.status.statusCategory.key)
   const priority = (epic.fields.priority?.name ?? 'low').toLowerCase()
   const dotColor = PRIORITY_DOTS[priority] ?? PRIORITY_DOTS.low
+  const flags = epic.fields[FLAGGED_FIELD]
 
   const [expanded, setExpanded] = useState(false)
 
@@ -84,6 +85,14 @@ export function EpicCard({
             rel="noreferrer"
             className="text-xs font-semibold text-slate-800 leading-snug flex-1 hover:text-blue-600"
           >
+            {isFlagged(flags) && (
+              <span
+                className="mr-1 text-[10px]"
+                title={`Flagged: ${flags.map(f => f.value).join(', ')}`}
+              >
+                🚩
+              </span>
+            )}
             {epic.fields.summary}
           </a>
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${STATUS_LABELS[sc]}`}>

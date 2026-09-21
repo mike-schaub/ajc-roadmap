@@ -1,5 +1,25 @@
 const JIRA_BASE = 'https://ajc.atlassian.net/rest/api/3'
 
+// The "Flagged" indicator (the red flag in the Jira UI) is backed by this
+// custom field on this instance — not a standard field.
+export const FLAGGED_FIELD = 'customfield_10200' as const
+
+export interface JiraFlag {
+  id: string
+  value: string
+}
+
+export interface JiraComment {
+  id: string
+  author: { displayName: string }
+  body: unknown
+  created: string
+}
+
+export function isFlagged(flags: JiraFlag[] | null | undefined): flags is JiraFlag[] {
+  return !!flags && flags.length > 0
+}
+
 export interface JiraEpic {
   id: string
   key: string
@@ -17,11 +37,12 @@ export interface JiraEpic {
     labels: string[]
     priority: { name: string } | null
     description: { content: unknown[] } | null
+    [FLAGGED_FIELD]: JiraFlag[] | null
   }
 }
 
 async function jiraEpicQuery(auth: string, jql: string): Promise<JiraEpic[]> {
-  const fields = 'summary,status,assignee,fixVersions,startdate,duedate,labels,priority'
+  const fields = `summary,status,assignee,fixVersions,startdate,duedate,labels,priority,${FLAGGED_FIELD}`
   const res = await fetch(`${JIRA_BASE}/search/jql`, {
     method: 'POST',
     headers: {
@@ -88,11 +109,13 @@ export interface JiraBug {
     fixVersions: { name: string; released: boolean }[]
     priority: { name: string } | null
     updated: string
+    comment: { comments: JiraComment[]; total: number } | null
+    [FLAGGED_FIELD]: JiraFlag[] | null
   }
 }
 
 async function jiraBugQuery(auth: string, jql: string): Promise<JiraBug[]> {
-  const fields = 'summary,status,assignee,fixVersions,priority,updated'
+  const fields = `summary,status,assignee,fixVersions,priority,updated,comment,${FLAGGED_FIELD}`
   const res = await fetch(`${JIRA_BASE}/search/jql`, {
     method: 'POST',
     headers: {
@@ -161,13 +184,6 @@ export function statusClass(categoryKey: string): 'todo' | 'inprog' | 'done' {
   if (k === 'done') return 'done'
   if (k === 'indeterminate') return 'inprog'
   return 'todo'
-}
-
-export interface JiraComment {
-  id: string
-  author: { displayName: string }
-  body: unknown
-  created: string
 }
 
 export interface JiraStory {
