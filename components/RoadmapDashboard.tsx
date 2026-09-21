@@ -1,13 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import type { JiraEpic, JiraStory, JiraBug } from '@/lib/jira'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import type { JiraEpic, JiraBug } from '@/lib/jira'
 import { statusClass } from '@/lib/jira'
+import { useDashboardData } from './DashboardDataProvider'
 import { SquadColumn } from './SquadColumn'
 import type { Squad } from './SquadColumn'
 import { BugColumn } from './BugColumn'
 import { GanttView } from './GanttView'
 import { FilterDropdown } from './FilterDropdown'
+import { ScrumMasterView } from './ScrumMasterView'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',     color: '#3b82f6' },
@@ -22,34 +26,44 @@ const BUG_STATUS_OPTIONS = [
   { key: 'pending', label: 'Pending Release' },
 ]
 
-type Filter = 'all' | 'todo' | 'inprog' | 'done'
-type Tab = 'board' | 'gantt' | 'bugs'
+const BUG_PRIORITY_OPTIONS = [
+  { key: 'Critical', label: 'Critical', color: '#ef4444' },
+  { key: 'High', label: 'High', color: '#fb923c' },
+  { key: 'Medium', label: 'Medium', color: '#facc15' },
+  { key: 'Low', label: 'Low', color: '#cbd5e1' },
+]
 
-export function RoadmapDashboard({
-  grouped,
-  storiesByEpic,
-  commentSummaries,
-  bugsGrouped,
-  fetchedAt,
-  today,
-  error,
-}: {
-  grouped: Record<string, JiraEpic[]>
-  storiesByEpic: Record<string, JiraStory[]>
-  commentSummaries: Record<string, string | null>
-  bugsGrouped: Record<string, JiraBug[]>
-  fetchedAt: string | null
-  today: string
-  error: string | null
-}) {
+type Filter = 'all' | 'todo' | 'inprog' | 'done'
+type Tab = 'board' | 'gantt' | 'bugs' | 'scrum'
+
+const TAB_PATHS: Record<Tab, string> = {
+  gantt: '/',
+  board: '/board',
+  bugs: '/bugs',
+  scrum: '/scrum',
+}
+
+function tabFromPathname(pathname: string): Tab {
+  if (pathname.startsWith('/board')) return 'board'
+  if (pathname.startsWith('/bugs')) return 'bugs'
+  if (pathname.startsWith('/scrum')) return 'scrum'
+  return 'gantt'
+}
+
+export function RoadmapDashboard() {
+  const { grouped, storiesByEpic, commentSummaries, bugsGrouped, fetchedAt, today, error } = useDashboardData()
+  const pathname = usePathname()
+  const tab = tabFromPathname(pathname)
   const [filter, setFilter] = useState<Filter>('all')
-  const [tab, setTab] = useState<Tab>('gantt')
 
   const [bugStatusFilter, setBugStatusFilter] = useState<Set<string>>(
     () => new Set(BUG_STATUS_OPTIONS.map(o => o.key))
   )
   const [bugProjectFilter, setBugProjectFilter] = useState<Set<string>>(
     () => new Set(SQUADS.map(s => s.key))
+  )
+  const [bugPriorityFilter, setBugPriorityFilter] = useState<Set<string>>(
+    () => new Set(BUG_PRIORITY_OPTIONS.map(o => o.key))
   )
   const [bugReleaseFilter, setBugReleaseFilter] = useState('all')
   const [bugSearch, setBugSearch] = useState('')
@@ -80,6 +94,7 @@ export function RoadmapDashboard({
       const sc = statusClass(bug.fields.status.statusCategory.key)
       const statusKey = sc === 'done' ? 'pending' : sc
       if (!bugStatusFilter.has(statusKey)) return false
+      if (!bugPriorityFilter.has(bug.fields.priority?.name ?? 'Low')) return false
       if (bugReleaseFilter !== 'all') {
         if (bugReleaseFilter === 'unassigned') {
           if (bug.fields.fixVersions.length > 0) return false
@@ -115,17 +130,17 @@ export function RoadmapDashboard({
 
         <div className="flex gap-1 ml-2">
           {(['gantt', 'board', 'bugs'] as Tab[]).map(t => (
-            <button
+            <Link
               key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1 rounded-md text-[12px] font-semibold transition-colors cursor-pointer ${
+              href={TAB_PATHS[t]}
+              className={`px-3 py-1 rounded-md text-[12px] font-semibold transition-colors ${
                 tab === t
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
-              {t === 'board' ? 'Board' : t === 'bugs' ? 'Bugs' : 'Timeline'}
-            </button>
+              {t === 'board' ? 'Board' : t === 'bugs' ? 'Bugs' : t === 'scrum' ? 'Scrum Master' : 'Timeline'}
+            </Link>
           ))}
         </div>
 
@@ -199,6 +214,13 @@ export function RoadmapDashboard({
               onToggle={key => toggleInSet(setBugProjectFilter, key)}
             />
 
+            <FilterDropdown
+              label="Priority"
+              options={BUG_PRIORITY_OPTIONS}
+              selected={bugPriorityFilter}
+              onToggle={key => toggleInSet(setBugPriorityFilter, key)}
+            />
+
             <select
               value={bugReleaseFilter}
               onChange={e => setBugReleaseFilter(e.target.value)}
@@ -242,6 +264,12 @@ export function RoadmapDashboard({
             )}
           </div>
         </>
+      )}
+
+      {tab === 'scrum' && (
+        <div className="pt-4 px-5 pb-8">
+          <ScrumMasterView squads={SQUADS} />
+        </div>
       )}
     </div>
   )

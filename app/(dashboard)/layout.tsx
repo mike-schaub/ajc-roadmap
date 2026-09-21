@@ -1,13 +1,13 @@
-import { RoadmapDashboard } from '@/components/RoadmapDashboard'
+import { DashboardDataProvider } from '@/components/DashboardDataProvider'
 import { fetchEpics, fetchEpicChildren, fetchBugs, groupByProject, groupBugsByProject } from '@/lib/jira'
 import { summarizeStoryComments } from '@/lib/ai'
 import type { JiraStory, JiraBug } from '@/lib/jira'
 
 export const revalidate = 300
 
-export default async function HomePage() {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let grouped: Record<string, never[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
-  let storiesByEpic: Record<string, JiraStory[]> = {}
+  const storiesByEpic: Record<string, JiraStory[]> = {}
   let commentSummaries: Record<string, string | null> = {}
   let bugsGrouped: Record<string, JiraBug[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let fetchedAt: string | null = null
@@ -30,21 +30,17 @@ export default async function HomePage() {
       }
     }
 
-    // Summarize comments via AI — one batched call, results cached with the page
+    // Summarize comments via AI — one batched call, results cached with the layout
     commentSummaries = await summarizeStoryComments(storiesByEpic)
   } catch (err) {
     error = err instanceof Error ? err.message : 'Unknown error'
   }
 
   return (
-    <RoadmapDashboard
-      grouped={grouped}
-      storiesByEpic={storiesByEpic}
-      commentSummaries={commentSummaries}
-      bugsGrouped={bugsGrouped}
-      fetchedAt={fetchedAt}
-      today={today}
-      error={error}
-    />
+    <DashboardDataProvider
+      data={{ grouped, storiesByEpic, commentSummaries, bugsGrouped, fetchedAt, today, error }}
+    >
+      {children}
+    </DashboardDataProvider>
   )
 }
