@@ -1,7 +1,15 @@
 import { DashboardDataProvider } from '@/components/DashboardDataProvider'
-import { fetchEpics, fetchEpicChildren, fetchBugs, groupByProject, groupBugsByProject } from '@/lib/jira'
+import {
+  fetchEpics,
+  fetchEpicChildren,
+  fetchBugs,
+  fetchReleases,
+  groupByProject,
+  groupBugsByProject,
+  groupReleasesByProject,
+} from '@/lib/jira'
 import { summarizeStoryComments } from '@/lib/ai'
-import type { JiraStory, JiraBug } from '@/lib/jira'
+import type { JiraStory, JiraBug, JiraRelease } from '@/lib/jira'
 
 export const revalidate = 300
 
@@ -10,14 +18,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const storiesByEpic: Record<string, JiraStory[]> = {}
   let commentSummaries: Record<string, string | null> = {}
   let bugsGrouped: Record<string, JiraBug[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
+  let releasesGrouped: Record<string, JiraRelease[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let fetchedAt: string | null = null
   let error: string | null = null
   const today = new Date().toISOString()
 
   try {
-    const [epics, bugs] = await Promise.all([fetchEpics(), fetchBugs()])
+    const [epics, bugs, releases] = await Promise.all([fetchEpics(), fetchBugs(), fetchReleases()])
     grouped = groupByProject(epics) as typeof grouped
     bugsGrouped = groupBugsByProject(bugs)
+    releasesGrouped = groupReleasesByProject(releases)
     fetchedAt = today
 
     // Fetch all child stories in parallel
@@ -38,7 +48,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <DashboardDataProvider
-      data={{ grouped, storiesByEpic, commentSummaries, bugsGrouped, fetchedAt, today, error }}
+      data={{ grouped, storiesByEpic, commentSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error }}
     >
       {children}
     </DashboardDataProvider>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import type { JiraEpic, JiraBug } from '@/lib/jira'
+import type { JiraEpic, JiraBug, JiraRelease } from '@/lib/jira'
 import { statusClass } from '@/lib/jira'
 import { useDashboardData } from './DashboardDataProvider'
 import { SquadColumn } from './SquadColumn'
@@ -12,6 +12,7 @@ import { BugColumn } from './BugColumn'
 import { GanttView } from './GanttView'
 import { FilterDropdown } from './FilterDropdown'
 import { ScrumMasterView } from './ScrumMasterView'
+import { ReleaseColumn } from './ReleaseColumn'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',     color: '#3b82f6' },
@@ -34,27 +35,38 @@ const BUG_PRIORITY_OPTIONS = [
 ]
 
 type Filter = 'all' | 'todo' | 'inprog' | 'done'
-type Tab = 'board' | 'gantt' | 'bugs' | 'scrum'
+type Tab = 'board' | 'gantt' | 'bugs' | 'scrum' | 'releases'
+type ReleaseView = 'upcoming' | 'past'
 
 const TAB_PATHS: Record<Tab, string> = {
   gantt: '/',
   board: '/board',
   bugs: '/bugs',
   scrum: '/scrum',
+  releases: '/releases',
 }
 
 function tabFromPathname(pathname: string): Tab {
   if (pathname.startsWith('/board')) return 'board'
   if (pathname.startsWith('/bugs')) return 'bugs'
   if (pathname.startsWith('/scrum')) return 'scrum'
+  if (pathname.startsWith('/releases')) return 'releases'
   return 'gantt'
 }
 
 export function RoadmapDashboard() {
-  const { grouped, storiesByEpic, commentSummaries, bugsGrouped, fetchedAt, today, error } = useDashboardData()
+  const { grouped, storiesByEpic, commentSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error } =
+    useDashboardData()
   const pathname = usePathname()
   const tab = tabFromPathname(pathname)
   const [filter, setFilter] = useState<Filter>('all')
+  const [releaseView, setReleaseView] = useState<ReleaseView>('upcoming')
+  const [pastRange, setPastRange] = useState(() => {
+    const to = new Date()
+    const from = new Date()
+    from.setMonth(from.getMonth() - 6)
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) }
+  })
 
   const [bugStatusFilter, setBugStatusFilter] = useState<Set<string>>(
     () => new Set(BUG_STATUS_OPTIONS.map(o => o.key))
@@ -110,6 +122,21 @@ export function RoadmapDashboard() {
     })
   }
 
+  function applyReleaseView(releases: JiraRelease[]): JiraRelease[] {
+    const filtered = releases.filter(r => {
+      if (releaseView === 'upcoming') return !r.released
+      if (!r.released || !r.releaseDate) return false
+      return r.releaseDate >= pastRange.from && r.releaseDate <= pastRange.to
+    })
+    return [...filtered].sort((a, b) => {
+      if (!a.releaseDate && !b.releaseDate) return 0
+      if (!a.releaseDate) return 1
+      if (!b.releaseDate) return -1
+      const diff = new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+      return releaseView === 'upcoming' ? diff : -diff
+    })
+  }
+
   // Board: hide done epics with no due date, or due date before today
   const todayMs = new Date(today).getTime()
   const boardGrouped = Object.fromEntries(
@@ -129,7 +156,7 @@ export function RoadmapDashboard() {
         <h1 className="text-[17px] font-bold text-slate-900">AJC Product Roadmap</h1>
 
         <div className="flex gap-1 ml-2">
-          {(['gantt', 'board', 'bugs'] as Tab[]).map(t => (
+          {(['gantt', 'board', 'bugs', 'releases'] as Tab[]).map(t => (
             <Link
               key={t}
               href={TAB_PATHS[t]}
@@ -139,7 +166,15 @@ export function RoadmapDashboard() {
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
-              {t === 'board' ? 'Board' : t === 'bugs' ? 'Bugs' : t === 'scrum' ? 'Scrum Master' : 'Timeline'}
+              {t === 'board'
+                ? 'Board'
+                : t === 'bugs'
+                ? 'Bugs'
+                : t === 'scrum'
+                ? 'Scrum Master'
+                : t === 'releases'
+                ? 'Releases'
+                : 'Timeline'}
             </Link>
           ))}
         </div>
@@ -262,6 +297,56 @@ export function RoadmapDashboard() {
                 No boards selected. Pick at least one project above.
               </p>
             )}
+          </div>
+        </>
+      )}
+
+      {tab === 'releases' && (
+        <>
+          <div className="px-5 pt-4 pb-3 flex items-center gap-2">
+            {(['upcoming', 'past'] as ReleaseView[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setReleaseView(v)}
+                className={`px-3 py-1 rounded-md border text-[11px] font-semibold transition-colors cursor-pointer ${
+                  releaseView === v
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                }`}
+              >
+                {v === 'upcoming' ? 'Upcoming' : 'Past'}
+              </button>
+            ))}
+
+            {releaseView === 'past' && (
+              <div className="flex items-center gap-1.5 ml-2">
+                <input
+                  type="date"
+                  value={pastRange.from}
+                  max={pastRange.to}
+                  onChange={e => setPastRange(prev => ({ ...prev, from: e.target.value }))}
+                  className="text-[11px] text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white hover:border-slate-400 focus:outline-none focus:border-slate-500 cursor-pointer"
+                />
+                <span className="text-[11px] text-slate-400">to</span>
+                <input
+                  type="date"
+                  value={pastRange.to}
+                  min={pastRange.from}
+                  onChange={e => setPastRange(prev => ({ ...prev, to: e.target.value }))}
+                  className="text-[11px] text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white hover:border-slate-400 focus:outline-none focus:border-slate-500 cursor-pointer"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 px-5 pb-8">
+            {SQUADS.map(squad => (
+              <ReleaseColumn
+                key={squad.key}
+                squad={squad}
+                releases={applyReleaseView(releasesGrouped[squad.key] ?? [])}
+              />
+            ))}
           </div>
         </>
       )}
