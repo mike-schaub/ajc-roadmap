@@ -1,0 +1,15 @@
+{
+  "buildCommand": "turbo run build --filter={dirname}",
+  "devCommand": "turbo run dev --filter={dirname}",
+  "installCommand": "npm install",
+  "projects": [
+    {
+      "name": "roadmap",
+      "rootDirectory": "apps/roadmap"
+    },
+    {
+      "name": "scrum-master",
+      "rootDirectory": "apps/scrum-master"
+    }
+  ]
+}

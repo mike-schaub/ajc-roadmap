@@ -1,0 +1,20 @@
+{
+  "extends": ["//"],
+  "globalDependencies": ["**/.env", "**/.env.local"],
+  "globalEnv": ["JIRA_HOST", "JIRA_EMAIL", "JIRA_API_TOKEN", "ANTHROPIC_API_KEY"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "outputs": [],
+      "cache": true
+    }
+  }
+}
