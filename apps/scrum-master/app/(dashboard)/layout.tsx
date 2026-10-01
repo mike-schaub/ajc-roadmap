@@ -9,7 +9,7 @@ import {
 import { summarizeStoryComments } from '@/lib/ai'
 import type { JiraStory, JiraBug } from '@/lib/jira'
 
-export const revalidate = 300
+export const revalidate = 86400
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let grouped: Record<string, never[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
