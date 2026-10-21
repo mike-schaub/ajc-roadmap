@@ -1,5 +1,5 @@
 {
-  "extends": ["//"],
+  "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env", "**/.env.local"],
   "globalEnv": ["JIRA_HOST", "JIRA_EMAIL", "JIRA_API_TOKEN", "ANTHROPIC_API_KEY"],
   "tasks": {
