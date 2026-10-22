@@ -55,7 +55,7 @@ function tabFromPathname(pathname: string): Tab {
 }
 
 export function RoadmapDashboard() {
-  const { grouped, storiesByEpic, commentSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error } =
+  const { grouped, storiesByEpic, epicSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error } =
     useDashboardData()
   const pathname = usePathname()
   const tab = tabFromPathname(pathname)
@@ -218,7 +218,7 @@ export function RoadmapDashboard() {
                 squad={squad}
                 epics={boardGrouped[squad.key] ?? []}
                 storiesByEpic={storiesByEpic}
-                commentSummaries={commentSummaries}
+                epicSummaries={epicSummaries}
                 filter={filter}
               />
             ))}

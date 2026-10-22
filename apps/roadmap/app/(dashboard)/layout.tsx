@@ -8,7 +8,7 @@ import {
   groupBugsByProject,
   groupReleasesByProject,
 } from '@/lib/jira'
-import { summarizeStoryComments } from '@/lib/ai'
+import { summarizeEpicStatus } from '@/lib/ai'
 import type { JiraStory, JiraBug, JiraRelease } from '@/lib/jira'
 
 export const revalidate = 86400
@@ -16,7 +16,7 @@ export const revalidate = 86400
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let grouped: Record<string, never[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   const storiesByEpic: Record<string, JiraStory[]> = {}
-  let commentSummaries: Record<string, string | null> = {}
+  let epicSummaries: Record<string, string | null> = {}
   let bugsGrouped: Record<string, JiraBug[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let releasesGrouped: Record<string, JiraRelease[]> = { CORE: [], EPS: [], MPS: [], MA: [] }
   let fetchedAt: string | null = null
@@ -40,15 +40,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
       }
     }
 
-    // Summarize comments via AI — one batched call, results cached with the layout
-    commentSummaries = await summarizeStoryComments(storiesByEpic)
+    // Summarize epic status via AI — one batched call, results cached with the layout
+    epicSummaries = await summarizeEpicStatus(grouped, storiesByEpic)
   } catch (err) {
     error = err instanceof Error ? err.message : 'Unknown error'
   }
 
   return (
     <DashboardDataProvider
-      data={{ grouped, storiesByEpic, commentSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error }}
+      data={{ grouped, storiesByEpic, epicSummaries, bugsGrouped, releasesGrouped, fetchedAt, today, error }}
     >
       {children}
     </DashboardDataProvider>

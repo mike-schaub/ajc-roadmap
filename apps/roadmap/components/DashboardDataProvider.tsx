@@ -6,7 +6,7 @@ import type { JiraEpic, JiraStory, JiraBug, JiraRelease } from '@/lib/jira'
 export interface DashboardData {
   grouped: Record<string, JiraEpic[]>
   storiesByEpic: Record<string, JiraStory[]>
-  commentSummaries: Record<string, string | null>
+  epicSummaries: Record<string, string | null>
   bugsGrouped: Record<string, JiraBug[]>
   releasesGrouped: Record<string, JiraRelease[]>
   fetchedAt: string | null

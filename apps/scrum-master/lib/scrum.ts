@@ -1,3 +1,9 @@
+export interface Squad {
+  key: string
+  name: string
+  color: string
+}
+
 const JIRA_BASE = 'https://ajc.atlassian.net/rest/api/3'
 const AGILE_BASE = 'https://ajc.atlassian.net/rest/agile/1.0'
 

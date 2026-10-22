@@ -1,29 +1,41 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { JiraStory } from './jira'
+import type { JiraEpic, JiraStory } from './jira'
 import { statusClass, adfToText } from './jira'
 
-// One batched call per page render — evaluates all non-done stories with comments.
-// Returns a flat map of story key → one-sentence status note, or null if not relevant.
-export async function summarizeStoryComments(
+const STUCK_DAYS = 10
+
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+}
+
+// One batched call per page render — one sentence per epic answering
+// "what's the status of this project, and why?"
+export async function summarizeEpicStatus(
+  grouped: Record<string, JiraEpic[]>,
   storiesByEpic: Record<string, JiraStory[]>
 ): Promise<Record<string, string | null>> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return {}
 
-  // Only include non-done stories that actually have comments
-  const candidates = Object.values(storiesByEpic)
+  const candidates = Object.values(grouped)
     .flat()
-    .filter(s => statusClass(s.fields.status.statusCategory.key) !== 'done')
-    .map(s => ({
-      key: s.key,
-      title: s.fields.summary,
-      status: s.fields.status.name,
-      comments: (s.fields.comment?.comments ?? [])
-        .slice(-3) // last 3 comments per story
-        .map(c => ({ author: c.author.displayName, text: adfToText(c.body).trim() }))
-        .filter(c => c.text.length > 10),
-    }))
-    .filter(s => s.comments.length > 0)
+    .map(epic => {
+      const stories = storiesByEpic[epic.key] ?? []
+      return {
+        key: epic.key,
+        title: epic.fields.summary,
+        status: epic.fields.status.name,
+        stories: stories.map(s => ({
+          status: s.fields.status.name,
+          stuck: statusClass(s.fields.status.statusCategory.key) === 'inprog' && daysSince(s.fields.updated) >= STUCK_DAYS,
+          recentComments: (s.fields.comment?.comments ?? [])
+            .slice(-3)
+            .map(c => adfToText(c.body).trim())
+            .filter(t => t.length > 10),
+        })),
+      }
+    })
+    .filter(e => e.stories.length > 0)
 
   if (candidates.length === 0) return {}
 
@@ -35,14 +47,13 @@ export async function summarizeStoryComments(
       max_tokens: 2048,
       messages: [{
         role: 'user',
-        content: `You are reviewing Jira story comments for a product roadmap dashboard. For each story, determine whether the comments contain information relevant to project status — blockers, risks, important decisions, dependencies, or meaningful progress updates.
+        content: `You are a status reporter for a product roadmap dashboard. For each epic below, answer in ONE sentence (under 20 words): what's the status of this project, and why?
 
-If relevant, write ONE concise sentence (under 15 words) capturing the key status information.
-If not relevant (routine acknowledgments, admin notes, vague check-ins, questions without answers), return null.
+Lead with a short status word or phrase (e.g. On track, At risk, Blocked, Stalled), then the reason. Base the reason on story comments when they mention blockers, risks, decisions, or progress — otherwise infer it from the story status mix (e.g. most stories done, one stuck in review for weeks, no active work).
 
-Respond ONLY with valid JSON: {"STORY-KEY": "summary or null", ...}
+Respond ONLY with valid JSON: {"EPIC-KEY": "status sentence", ...}. Omit an epic's key entirely if there is truly nothing meaningful to say about it (don't include it with a null value).
 
-Stories:
+Epics:
 ${JSON.stringify(candidates, null, 2)}`,
       }],
     })

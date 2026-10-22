@@ -16,13 +16,13 @@ export function SquadColumn({
   squad,
   epics,
   storiesByEpic,
-  commentSummaries,
+  epicSummaries,
   filter,
 }: {
   squad: Squad
   epics: JiraEpic[]
   storiesByEpic: Record<string, JiraStory[]>
-  commentSummaries: Record<string, string | null>
+  epicSummaries: Record<string, string | null>
   filter: Filter
 }) {
   const visible = filter === 'all'
@@ -66,7 +66,7 @@ export function SquadColumn({
             key={epic.id}
             epic={epic}
             stories={storiesByEpic[epic.key] ?? []}
-            commentSummaries={commentSummaries}
+            epicSummary={epicSummaries[epic.key] ?? null}
           />
         ))}
       </div>

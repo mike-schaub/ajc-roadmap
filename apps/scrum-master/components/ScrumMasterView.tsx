@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { Squad } from './SquadColumn'
-import type { SquadScrumStats } from '@/lib/scrum'
+import type { Squad, SquadScrumStats } from '@/lib/scrum'
 
 type ScrumResponse =
   | { squads: Record<string, SquadScrumStats>; fetchedAt: string }

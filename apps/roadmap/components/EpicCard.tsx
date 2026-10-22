@@ -53,11 +53,11 @@ function daysSince(iso: string): number {
 export function EpicCard({
   epic,
   stories,
-  commentSummaries,
+  epicSummary,
 }: {
   epic: JiraEpic
   stories: JiraStory[]
-  commentSummaries: Record<string, string | null>
+  epicSummary: string | null
 }) {
   const sc = statusClass(epic.fields.status.statusCategory.key)
   const priority = (epic.fields.priority?.name ?? 'low').toLowerCase()
@@ -113,6 +113,10 @@ export function EpicCard({
           <span className="font-mono text-slate-300 ml-auto">{epic.key}</span>
         </div>
 
+        {epicSummary && (
+          <p className="mt-1.5 text-[11px] text-slate-600 leading-relaxed">{epicSummary}</p>
+        )}
+
         {total > 0 && (
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
@@ -155,7 +159,6 @@ export function EpicCard({
             {[...stories].sort((a, b) => storyOrder(a) - storyOrder(b)).map(story => {
               const ssc = statusClass(story.fields.status.statusCategory.key)
               const isStuck = ssc === 'inprog' && daysSince(story.fields.updated) >= STUCK_DAYS
-              const summary = commentSummaries[story.key] ?? null
 
               return (
                 <div
@@ -187,11 +190,6 @@ export function EpicCard({
                         <span className="font-mono text-slate-300">{story.key}</span>
                         <span className="ml-auto">{story.fields.status.name}</span>
                       </div>
-                      {summary && (
-                        <div className="mt-1.5 pt-1.5 border-t border-slate-100">
-                          <p className="text-[10px] text-slate-500 leading-relaxed">{summary}</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
