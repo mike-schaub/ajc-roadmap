@@ -53,7 +53,7 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
     <div>
       <div className="flex items-center mb-3">
         <p className="text-[11px] text-slate-400">
-          Based on tickets currently in flight (past To Do, not yet Done). Updated{' '}
+          Time in status and stuck tickets reflect tickets currently in flight (past To Do, not yet Done). Updated{' '}
           {new Date(fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
@@ -105,12 +105,28 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg">
-                  <span className="text-xl font-bold text-slate-800">{stats.sentBackToDevCount}</span>
-                  <span className="text-[11px] text-slate-500 leading-tight">
-                    ticket{stats.sentBackToDevCount === 1 ? '' : 's'} sent back to dev<br />after moving on
-                  </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="px-3 py-2 bg-slate-50 rounded-lg">
+                    <div className="text-xl font-bold text-slate-800">
+                      {stats.cycleTime ? `${stats.cycleTime.medianDays.toFixed(1)}d` : '—'}
+                    </div>
+                    <div className="text-[11px] text-slate-500 leading-tight">
+                      median In Progress → Done
+                      {stats.cycleTime && <> (avg {stats.cycleTime.avgDays.toFixed(1)}d)</>}
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 bg-slate-50 rounded-lg">
+                    <div className="text-xl font-bold text-slate-800">
+                      {stats.sentBackPct === null ? '—' : `${Math.round(stats.sentBackPct)}%`}
+                    </div>
+                    <div className="text-[11px] text-slate-500 leading-tight">
+                      sent back to dev ({stats.sentBackCount} of {stats.doneCount} done)
+                    </div>
+                  </div>
                 </div>
+                <p className="text-[10px] text-slate-400 -mt-3">
+                  Based on {stats.doneCount} ticket{stats.doneCount === 1 ? '' : 's'} done in the last {stats.doneWindowDays} days.
+                </p>
 
                 <div>
                   <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">

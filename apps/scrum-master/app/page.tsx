@@ -1,5 +1,5 @@
 import type { Squad } from '@/lib/scrum'
-import { ScrumMasterView } from '@/components/ScrumMasterView'
+import { ScrumMasterTabs } from '@/components/ScrumMasterTabs'
 
 const SQUADS: Squad[] = [
   { key: 'CORE', name: 'Core Products',     color: '#3b82f6' },
@@ -16,7 +16,7 @@ export default function ScrumMasterPage() {
       </header>
 
       <div className="pt-4 px-5 pb-8">
-        <ScrumMasterView squads={SQUADS} />
+        <ScrumMasterTabs squads={SQUADS} />
       </div>
     </div>
   )
