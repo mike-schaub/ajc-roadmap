@@ -51,7 +51,7 @@ async function jiraEpicQuery(auth: string, jql: string): Promise<JiraEpic[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ jql, fields: fields.split(','), maxResults: 100 }),
-    next: { revalidate: 300 },
+    next: { revalidate: 3600 },
   })
   if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
   const data = await res.json()
@@ -124,7 +124,7 @@ async function jiraBugQuery(auth: string, jql: string): Promise<JiraBug[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ jql, fields: fields.split(','), maxResults: 100 }),
-    next: { revalidate: 300 },
+    next: { revalidate: 3600 },
   })
   if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
   const data = await res.json()
@@ -204,7 +204,7 @@ async function fetchProjectVersions(projectKey: string, auth: string): Promise<J
       `${JIRA_BASE}/project/${projectKey}/version?maxResults=100&startAt=${startAt}&orderBy=-releaseDate`,
       {
         headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
-        next: { revalidate: 300 },
+        next: { revalidate: 3600 },
       }
     )
     if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
@@ -254,7 +254,7 @@ async function jiraReleaseIssueQuery(auth: string, jql: string): Promise<JiraRel
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ jql, fields: fields.split(','), maxResults: 100 }),
-    next: { revalidate: 300 },
+    next: { revalidate: 3600 },
   })
   if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
   const data = await res.json()
@@ -344,7 +344,7 @@ export async function fetchEpicChildren(epicKey: string): Promise<JiraStory[]> {
       fields: ['summary', 'status', 'assignee', 'updated', 'comment'],
       maxResults: 50,
     }),
-    next: { revalidate: 300 },
+    next: { revalidate: 3600 },
   })
 
   if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)

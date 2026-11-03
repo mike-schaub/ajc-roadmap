@@ -64,7 +64,7 @@ async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> 
       fields: ['summary', 'status', 'assignee', 'created'],
       maxResults: 100,
     }),
-    next: { revalidate: 900 },
+    cache: 'no-store',
   })
   if (!res.ok) throw new Error(`Jira API error: ${res.status} ${res.statusText}`)
   const data = await res.json()
@@ -86,7 +86,7 @@ async function fetchStatusTransitions(issueKey: string): Promise<StatusTransitio
   for (;;) {
     const res = await fetch(
       `${JIRA_BASE}/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=100`,
-      { headers: { Authorization: authHeader(), Accept: 'application/json' }, next: { revalidate: 900 } }
+      { headers: { Authorization: authHeader(), Accept: 'application/json' }, cache: 'no-store' }
     )
     if (!res.ok) throw new Error(`Jira changelog error for ${issueKey}: ${res.status} ${res.statusText}`)
     const data = await res.json()
