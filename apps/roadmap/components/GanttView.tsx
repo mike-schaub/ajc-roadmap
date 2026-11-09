@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { JiraEpic } from '@/lib/jira'
-import { statusClass } from '@/lib/jira'
+import { statusClass, isFlagged, FLAGGED_FIELD } from '@/lib/jira'
 
 const SQUADS = [
   { key: 'CORE', name: 'Core Products',     color: '#3b82f6' },
@@ -227,11 +227,19 @@ export function GanttView({
           const barRight = pct(endDate ?? rangeEnd, rangeStart, rangeEnd)
           const barWidth = Math.max(0.5, barRight - barLeft)
 
+          const flags = epic.fields[FLAGGED_FIELD]
+          const flagged = isFlagged(flags)
+          const flagLabel = flagged ? `Flagged: ${flags.map(f => f.value).join(', ')}` : ''
+          // Flag sits just past the end of the bar; tuck it inside when the end is near the right edge.
+          const endPct = milestoneOnly ? milestonePct! : barLeft + barWidth
+          const flagInside = endPct > 94
+
           const dateRange = startDate && endDate
             ? `${fmtShort(epic.fields.startdate!)} → ${fmtShort(epic.fields.duedate!)}`
             : startDate
             ? `From ${fmtShort(epic.fields.startdate!)}`
             : `Due ${fmtShort(epic.fields.duedate!)}`
+          const barTitle = flagged ? `${dateRange} · ${flagLabel}` : dateRange
 
           return (
             <div
@@ -274,8 +282,9 @@ export function GanttView({
                       left: `calc(${milestonePct}% - 5px)`,
                       backgroundColor: squad.color,
                       opacity: barOpacity,
+                      ...(flagged && { boxShadow: '0 0 0 2px #dc2626' }),
                     }}
-                    title={dateRange}
+                    title={barTitle}
                   />
                 ) : (
                   // Spanning bar: flat left cap if start is before the window
@@ -289,9 +298,21 @@ export function GanttView({
                       borderRadius: startsBeforeWindow
                         ? '0 4px 4px 0'
                         : '4px',
+                      ...(flagged && { boxShadow: 'inset 0 0 0 2px #dc2626' }),
                     }}
-                    title={dateRange}
+                    title={barTitle}
                   />
+                )}
+                {flagged && (
+                  <span
+                    className="absolute top-1/2 -translate-y-1/2 text-[11px] leading-none z-10"
+                    style={flagInside
+                      ? { right: '4px' }
+                      : { left: `calc(${endPct}% + ${milestoneOnly ? 9 : 4}px)` }}
+                    title={flagLabel}
+                  >
+                    🚩
+                  </span>
                 )}
               </div>
             </div>
