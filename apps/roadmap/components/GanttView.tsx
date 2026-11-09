@@ -17,7 +17,9 @@ function pct(date: Date, start: Date, end: Date): number {
 }
 
 function fmtShort(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // Date-only strings (YYYY-MM-DD) parse as UTC, which shifts back a day in local time
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // Avoid timezone off-by-one: parse/format dates in local time
