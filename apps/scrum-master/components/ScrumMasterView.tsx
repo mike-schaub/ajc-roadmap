@@ -145,6 +145,14 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
                         className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md hover:bg-slate-50 border border-slate-100"
                       >
                         <span className="font-semibold text-slate-500 flex-shrink-0">{ticket.key}</span>
+                        {ticket.flagged && (
+                          <span
+                            title="Flagged in Jira"
+                            className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"
+                          >
+                            🚩 Flagged
+                          </span>
+                        )}
                         <span className="text-slate-700 truncate flex-1">{ticket.summary}</span>
                         <span className="text-slate-400 flex-shrink-0">{ticket.status}</span>
                         <span className={`flex-shrink-0 font-semibold px-1.5 py-0.5 rounded-full ${staleBadgeClass(ticket.daysStuck)}`}>

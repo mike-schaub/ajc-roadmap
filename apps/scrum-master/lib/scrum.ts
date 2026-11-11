@@ -6,6 +6,8 @@ export interface Squad {
   color: string
 }
 
+const FLAGGED_FIELD = 'customfield_10200'
+
 export const JIRA_BASE = 'https://ajc.atlassian.net/rest/api/3'
 export const AGILE_BASE = 'https://ajc.atlassian.net/rest/agile/1.0'
 
@@ -57,6 +59,8 @@ interface TicketBasic {
     status: { id: string; name: string }
     assignee: { displayName: string } | null
     created: string
+    // Jira's "Flagged" checkbox field; empty/null when not flagged.
+    customfield_10200?: unknown[] | null
   }
 }
 
@@ -71,7 +75,7 @@ async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> 
     },
     body: JSON.stringify({
       jql,
-      fields: ['summary', 'status', 'assignee', 'created'],
+      fields: ['summary', 'status', 'assignee', 'created', FLAGGED_FIELD],
       maxResults: 100,
     }),
     next: { revalidate: 900 },
@@ -190,6 +194,7 @@ export interface StaleTicket {
   status: string
   assignee: string | null
   daysStuck: number
+  flagged: boolean
 }
 
 export interface CycleTimeStat {
@@ -307,6 +312,7 @@ export async function computeSquadScrumStats(projectKey: string): Promise<SquadS
         status: ticket.fields.status.name,
         assignee: ticket.fields.assignee?.displayName ?? null,
         daysStuck: Math.round(daysSinceLastMove),
+        flagged: (ticket.fields.customfield_10200?.length ?? 0) > 0,
       })
     }
   })
