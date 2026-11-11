@@ -27,6 +27,8 @@ export interface SprintReport {
   // Committed work taken out of the sprint.
   removed: Tally
   byAssignee: AssigneeRow[]
+  // Committed tickets with no story points (missing or 0 at sprint start); they count as 0 in the point totals.
+  unpointedCommitted: number
 }
 
 // Uses each ticket's current assignee, not who held it at sprint start.
@@ -129,6 +131,9 @@ export async function fetchSprintReport(squadKey: string, sprintId: number, isAc
     notCompleted: tally(open.filter(wasCommitted), 'initial'),
     removed: tally(punted.filter(wasCommitted), 'initial'),
     byAssignee: tallyByAssignee(completed, open, punted, added),
+    unpointedCommitted: [...completed, ...open, ...punted]
+      .filter(wasCommitted)
+      .filter(i => !((i.estimateStatistic?.statFieldValue?.value ?? 0) > 0)).length,
   }
 }
 

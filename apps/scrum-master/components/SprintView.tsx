@@ -120,6 +120,11 @@ function SprintCard({ squad, data }: { squad: Squad; data: SquadSprints }) {
                   style={{ width: `${Math.min(100, pct ?? 0)}%`, backgroundColor: squad.color }}
                 />
               </div>
+              {unit === 'points' && report.unpointedCommitted > 0 && (
+                <p className="mt-2 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                  ⚠ {report.unpointedCommitted} of {report.committed.count} committed ticket{report.committed.count === 1 ? ' is' : 's are'} unpointed
+                </p>
+              )}
               {unit === 'count' && (
                 <p className="text-[10px] text-slate-400 mt-1">This squad doesn&apos;t estimate in story points, so tickets are counted.</p>
               )}
