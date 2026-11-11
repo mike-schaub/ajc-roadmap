@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Squad } from '@/lib/scrum'
 import type { SprintInfo, SprintReport, Tally } from '@/lib/sprints'
+import { RolloverPill } from '@/components/RolloverPill'
 
 interface SquadSprints {
   sprints: SprintInfo[]
@@ -14,6 +15,7 @@ type SprintsResponse =
   | { squads: Record<string, SquadSprints>; dataAsOf: string }
   | { error: string }
 
+const ROLLED_PREVIEW = 5
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
 function formatRange(sprint: SprintInfo) {
@@ -29,6 +31,7 @@ function SprintCard({ squad, data }: { squad: Squad; data: SquadSprints }) {
   const [loadingId, setLoadingId] = useState<number | null>(null)
   const [errors, setErrors] = useState<Record<number, string>>({})
   const [now] = useState(() => Date.now())
+  const [showAllRolled, setShowAllRolled] = useState(false)
 
   const sprint = data.sprints.find(s => s.id === selectedId)
   const report = selectedId !== null ? reports[selectedId] : undefined
@@ -168,6 +171,48 @@ function SprintCard({ squad, data }: { squad: Squad; data: SquadSprints }) {
                 <p className="text-[10px] text-slate-400 mt-1">
                   Assigned = committed at sprint start{unit === 'points' ? ' (ticket count in parentheses)' : ''}. Done includes added work. Uses each ticket&apos;s current assignee.
                 </p>
+              </div>
+            )}
+
+            {report.rollover && report.rollover.open.length + report.rollover.doneCount > 0 && (
+              <div>
+                <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
+                  Rolled over ({report.rollover.open.length} still open)
+                </h3>
+                <div className="flex flex-col gap-1.5">
+                  {(showAllRolled ? report.rollover.open : report.rollover.open.slice(0, ROLLED_PREVIEW)).map(t => (
+                    <a
+                      key={t.key}
+                      href={t.webUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col gap-0.5 text-xs px-2 py-1.5 rounded-md hover:bg-slate-50 border border-slate-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-500 flex-shrink-0">{t.key}</span>
+                        <span className="text-slate-700 truncate flex-1">{t.summary}</span>
+                        <RolloverPill sprints={t.sprints} />
+                      </span>
+                      <span className="text-[10px] text-slate-400 truncate">
+                        {t.status} · {t.assignee ?? 'Unassigned'} · {t.sprints.join(' → ')}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+                {report.rollover.open.length > ROLLED_PREVIEW && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllRolled(v => !v)}
+                    className="mt-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-800"
+                  >
+                    {showAllRolled ? 'Show fewer' : `Show all ${report.rollover.open.length}`}
+                  </button>
+                )}
+                {report.rollover.doneCount > 0 && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {report.rollover.doneCount} more rolled over and have since been completed. Sorted by number of rollovers.
+                  </p>
+                )}
               </div>
             )}
           </>

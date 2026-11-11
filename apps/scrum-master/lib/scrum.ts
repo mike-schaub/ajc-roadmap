@@ -1,4 +1,5 @@
 import { trackedFetch } from '@/lib/freshness'
+import { SPRINT_FIELD, rolledOverFrom, type JiraSprintRef } from '@/lib/rollover'
 
 export interface Squad {
   key: string
@@ -61,6 +62,7 @@ interface TicketBasic {
     created: string
     // Jira's "Flagged" checkbox field; empty/null when not flagged.
     customfield_10200?: unknown[] | null
+    customfield_10115?: JiraSprintRef[] | null
   }
 }
 
@@ -75,7 +77,7 @@ async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> 
     },
     body: JSON.stringify({
       jql,
-      fields: ['summary', 'status', 'assignee', 'created', FLAGGED_FIELD],
+      fields: ['summary', 'status', 'assignee', 'created', FLAGGED_FIELD, SPRINT_FIELD],
       maxResults: 100,
     }),
     next: { revalidate: 900 },
@@ -195,6 +197,8 @@ export interface StaleTicket {
   assignee: string | null
   daysStuck: number
   flagged: boolean
+  // Sprints this ticket has already rolled over from, oldest first.
+  rolledOver: string[]
 }
 
 export interface CycleTimeStat {
@@ -313,6 +317,7 @@ export async function computeSquadScrumStats(projectKey: string): Promise<SquadS
         assignee: ticket.fields.assignee?.displayName ?? null,
         daysStuck: Math.round(daysSinceLastMove),
         flagged: (ticket.fields.customfield_10200?.length ?? 0) > 0,
+        rolledOver: rolledOverFrom(ticket.fields.customfield_10115),
       })
     }
   })

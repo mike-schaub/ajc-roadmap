@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Squad, SquadScrumStats } from '@/lib/scrum'
+import { RolloverPill } from '@/components/RolloverPill'
 
 type ScrumResponse =
   | { squads: Record<string, SquadScrumStats>; dataAsOf: string }
@@ -153,6 +154,7 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
                             🚩 Flagged
                           </span>
                         )}
+                        <RolloverPill sprints={ticket.rolledOver} />
                         <span className="text-slate-700 truncate flex-1">{ticket.summary}</span>
                         <span className="text-slate-400 flex-shrink-0">{ticket.status}</span>
                         <span className={`flex-shrink-0 font-semibold px-1.5 py-0.5 rounded-full ${staleBadgeClass(ticket.daysStuck)}`}>
