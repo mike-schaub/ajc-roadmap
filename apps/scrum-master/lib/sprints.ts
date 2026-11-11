@@ -1,4 +1,6 @@
 import { AGILE_BASE, BOARD_IDS, authHeader } from '@/lib/scrum'
+import { trackedFetch } from '@/lib/freshness'
+import { rolledOverFrom } from '@/lib/rollover'
 
 const GREENHOPPER_BASE = 'https://ajc.atlassian.net/rest/greenhopper/1.0'
 const HISTORY_LIMIT = 13
@@ -26,6 +28,27 @@ export interface SprintReport {
   // Committed work taken out of the sprint.
   removed: Tally
   byAssignee: AssigneeRow[]
+  // Committed tickets with no story points (missing or 0 at sprint start); they count as 0 in the point totals.
+  unpointedCommitted: number
+  // Only tracked for the active sprint; null for closed sprints.
+  rollover: Rollover | null
+}
+
+export interface RolledOverTicket {
+  key: string
+  webUrl: string
+  summary: string
+  status: string
+  assignee: string | null
+  // Sprints it has already rolled over from, oldest first.
+  sprints: string[]
+}
+
+export interface Rollover {
+  // Not-yet-done tickets in the sprint that were in earlier sprints, most rollovers first.
+  open: RolledOverTicket[]
+  // Tickets that rolled in but have since been completed.
+  doneCount: number
 }
 
 // Uses each ticket's current assignee, not who held it at sprint start.
@@ -40,7 +63,7 @@ export interface AssigneeRow {
 async function jiraFetch(url: string, revalidate: number): Promise<Response> {
   let res: Response | undefined
   for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch(url, {
+    res = await trackedFetch(url, {
       headers: { Authorization: authHeader(), Accept: 'application/json' },
       next: { revalidate },
     })
@@ -119,6 +142,7 @@ export async function fetchSprintReport(squadKey: string, sprintId: number, isAc
   const open: ReportIssue[] = contents.issuesNotCompletedInCurrentSprint ?? []
   const punted: ReportIssue[] = contents.puntedIssues ?? []
   const wasCommitted = (i: ReportIssue) => !added.has(i.key)
+  const rollover = isActive ? await fetchRollover(sprintId) : null
 
   return {
     sprintId,
@@ -128,7 +152,58 @@ export async function fetchSprintReport(squadKey: string, sprintId: number, isAc
     notCompleted: tally(open.filter(wasCommitted), 'initial'),
     removed: tally(punted.filter(wasCommitted), 'initial'),
     byAssignee: tallyByAssignee(completed, open, punted, added),
+    unpointedCommitted: [...completed, ...open, ...punted]
+      .filter(wasCommitted)
+      .filter(i => !((i.estimateStatistic?.statFieldValue?.value ?? 0) > 0)).length,
+    rollover,
   }
+}
+
+interface SprintIssue {
+  key: string
+  fields: {
+    summary: string
+    status: { name: string; statusCategory?: { key: string } }
+    assignee: { displayName: string } | null
+    closedSprints?: { name: string; startDate?: string }[]
+  }
+}
+
+// The agile API lists a sprint's tickets with the closed sprints each one has been through.
+async function fetchRollover(sprintId: number): Promise<Rollover> {
+  const issues: SprintIssue[] = []
+  for (let startAt = 0; ; ) {
+    const res = await jiraFetch(
+      `${AGILE_BASE}/sprint/${sprintId}/issue?fields=summary,status,assignee,closedSprints&maxResults=100&startAt=${startAt}`,
+      900
+    )
+    if (!res.ok) throw new Error(`Jira sprint issues error: ${res.status} ${res.statusText}`)
+    const data = await res.json()
+    issues.push(...(data.issues ?? []))
+    startAt += data.issues?.length ?? 0
+    if (!data.issues?.length || startAt >= (data.total ?? 0)) break
+  }
+
+  const open: RolledOverTicket[] = []
+  let doneCount = 0
+  for (const issue of issues) {
+    const sprints = rolledOverFrom(issue.fields.closedSprints?.map(s => ({ ...s, state: 'closed' })))
+    if (sprints.length === 0) continue
+    if (issue.fields.status.statusCategory?.key === 'done') {
+      doneCount++
+      continue
+    }
+    open.push({
+      key: issue.key,
+      webUrl: `https://ajc.atlassian.net/browse/${issue.key}`,
+      summary: issue.fields.summary,
+      status: issue.fields.status.name,
+      assignee: issue.fields.assignee?.displayName ?? null,
+      sprints,
+    })
+  }
+  open.sort((a, b) => b.sprints.length - a.sprints.length || a.key.localeCompare(b.key, undefined, { numeric: true }))
+  return { open, doneCount }
 }
 
 function tallyByAssignee(completed: ReportIssue[], open: ReportIssue[], punted: ReportIssue[], added: Set<string>): AssigneeRow[] {

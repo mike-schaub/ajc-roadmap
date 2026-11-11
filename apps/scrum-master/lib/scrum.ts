@@ -1,8 +1,13 @@
+import { trackedFetch } from '@/lib/freshness'
+import { SPRINT_FIELD, rolledOverFrom, type JiraSprintRef } from '@/lib/rollover'
+
 export interface Squad {
   key: string
   name: string
   color: string
 }
+
+const FLAGGED_FIELD = 'customfield_10200'
 
 export const JIRA_BASE = 'https://ajc.atlassian.net/rest/api/3'
 export const AGILE_BASE = 'https://ajc.atlassian.net/rest/agile/1.0'
@@ -34,7 +39,7 @@ interface BoardColumn {
 }
 
 async function fetchBoardColumns(boardId: number): Promise<BoardColumn[]> {
-  const res = await fetch(`${AGILE_BASE}/board/${boardId}/configuration`, {
+  const res = await trackedFetch(`${AGILE_BASE}/board/${boardId}/configuration`, {
     headers: { Authorization: authHeader(), Accept: 'application/json' },
     next: { revalidate: 3600 },
   })
@@ -55,12 +60,15 @@ interface TicketBasic {
     status: { id: string; name: string }
     assignee: { displayName: string } | null
     created: string
+    // Jira's "Flagged" checkbox field; empty/null when not flagged.
+    customfield_10200?: unknown[] | null
+    customfield_10115?: JiraSprintRef[] | null
   }
 }
 
 async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> {
   const jql = `project = ${projectKey} AND issuetype in (Story, Task, Bug) AND statusCategory = "In Progress" ORDER BY updated DESC`
-  const res = await fetch(`${JIRA_BASE}/search/jql`, {
+  const res = await trackedFetch(`${JIRA_BASE}/search/jql`, {
     method: 'POST',
     headers: {
       Authorization: authHeader(),
@@ -69,7 +77,7 @@ async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> 
     },
     body: JSON.stringify({
       jql,
-      fields: ['summary', 'status', 'assignee', 'created'],
+      fields: ['summary', 'status', 'assignee', 'created', FLAGGED_FIELD, SPRINT_FIELD],
       maxResults: 100,
     }),
     next: { revalidate: 900 },
@@ -113,7 +121,7 @@ async function fetchRecentlyDoneTickets(projectKey: string): Promise<DoneTicket[
   const tickets: DoneTicket[] = []
   let nextPageToken: string | undefined
   do {
-    const res = await fetch(`${JIRA_BASE}/search/jql`, {
+    const res = await trackedFetch(`${JIRA_BASE}/search/jql`, {
       method: 'POST',
       headers: {
         Authorization: authHeader(),
@@ -142,7 +150,7 @@ async function fetchStatusTransitions(issueKey: string): Promise<StatusTransitio
   const transitions: StatusTransition[] = []
   let startAt = 0
   for (;;) {
-    const res = await fetch(
+    const res = await trackedFetch(
       `${JIRA_BASE}/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=100`,
       { headers: { Authorization: authHeader(), Accept: 'application/json' }, next: { revalidate: 900 } }
     )
@@ -188,6 +196,9 @@ export interface StaleTicket {
   status: string
   assignee: string | null
   daysStuck: number
+  flagged: boolean
+  // Sprints this ticket has already rolled over from, oldest first.
+  rolledOver: string[]
 }
 
 export interface CycleTimeStat {
@@ -305,6 +316,8 @@ export async function computeSquadScrumStats(projectKey: string): Promise<SquadS
         status: ticket.fields.status.name,
         assignee: ticket.fields.assignee?.displayName ?? null,
         daysStuck: Math.round(daysSinceLastMove),
+        flagged: (ticket.fields.customfield_10200?.length ?? 0) > 0,
+        rolledOver: rolledOverFrom(ticket.fields.customfield_10115),
       })
     }
   })

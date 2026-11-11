@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import type { Squad, SquadScrumStats } from '@/lib/scrum'
+import { RolloverPill } from '@/components/RolloverPill'
 
 type ScrumResponse =
-  | { squads: Record<string, SquadScrumStats>; fetchedAt: string }
+  | { squads: Record<string, SquadScrumStats>; dataAsOf: string }
   | { error: string }
 
 function staleBadgeClass(daysStuck: number) {
@@ -47,14 +48,14 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
     )
   }
 
-  const { squads, fetchedAt } = data
+  const { squads, dataAsOf } = data
 
   return (
     <div>
       <div className="flex items-center mb-3">
         <p className="text-[11px] text-slate-400">
-          Time in status and stuck tickets reflect tickets currently in flight (past To Do, not yet Done). Updated{' '}
-          {new Date(fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          Time in status and stuck tickets reflect tickets currently in flight (past To Do, not yet Done). Data as of{' '}
+          {new Date(dataAsOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (refreshes from Jira every 15 min; reload the page to pick up the latest).
         </p>
       </div>
 
@@ -145,6 +146,15 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
                         className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md hover:bg-slate-50 border border-slate-100"
                       >
                         <span className="font-semibold text-slate-500 flex-shrink-0">{ticket.key}</span>
+                        {ticket.flagged && (
+                          <span
+                            title="Flagged in Jira"
+                            className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200"
+                          >
+                            🚩 Flagged
+                          </span>
+                        )}
+                        <RolloverPill sprints={ticket.rolledOver} />
                         <span className="text-slate-700 truncate flex-1">{ticket.summary}</span>
                         <span className="text-slate-400 flex-shrink-0">{ticket.status}</span>
                         <span className={`flex-shrink-0 font-semibold px-1.5 py-0.5 rounded-full ${staleBadgeClass(ticket.daysStuck)}`}>
