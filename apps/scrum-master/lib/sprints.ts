@@ -1,4 +1,5 @@
 import { AGILE_BASE, BOARD_IDS, authHeader } from '@/lib/scrum'
+import { trackedFetch } from '@/lib/freshness'
 
 const GREENHOPPER_BASE = 'https://ajc.atlassian.net/rest/greenhopper/1.0'
 const HISTORY_LIMIT = 13
@@ -40,7 +41,7 @@ export interface AssigneeRow {
 async function jiraFetch(url: string, revalidate: number): Promise<Response> {
   let res: Response | undefined
   for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch(url, {
+    res = await trackedFetch(url, {
       headers: { Authorization: authHeader(), Accept: 'application/json' },
       next: { revalidate },
     })

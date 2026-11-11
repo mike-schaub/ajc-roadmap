@@ -1,3 +1,5 @@
+import { trackedFetch } from '@/lib/freshness'
+
 export interface Squad {
   key: string
   name: string
@@ -34,7 +36,7 @@ interface BoardColumn {
 }
 
 async function fetchBoardColumns(boardId: number): Promise<BoardColumn[]> {
-  const res = await fetch(`${AGILE_BASE}/board/${boardId}/configuration`, {
+  const res = await trackedFetch(`${AGILE_BASE}/board/${boardId}/configuration`, {
     headers: { Authorization: authHeader(), Accept: 'application/json' },
     next: { revalidate: 3600 },
   })
@@ -60,7 +62,7 @@ interface TicketBasic {
 
 async function fetchInFlightTickets(projectKey: string): Promise<TicketBasic[]> {
   const jql = `project = ${projectKey} AND issuetype in (Story, Task, Bug) AND statusCategory = "In Progress" ORDER BY updated DESC`
-  const res = await fetch(`${JIRA_BASE}/search/jql`, {
+  const res = await trackedFetch(`${JIRA_BASE}/search/jql`, {
     method: 'POST',
     headers: {
       Authorization: authHeader(),
@@ -113,7 +115,7 @@ async function fetchRecentlyDoneTickets(projectKey: string): Promise<DoneTicket[
   const tickets: DoneTicket[] = []
   let nextPageToken: string | undefined
   do {
-    const res = await fetch(`${JIRA_BASE}/search/jql`, {
+    const res = await trackedFetch(`${JIRA_BASE}/search/jql`, {
       method: 'POST',
       headers: {
         Authorization: authHeader(),
@@ -142,7 +144,7 @@ async function fetchStatusTransitions(issueKey: string): Promise<StatusTransitio
   const transitions: StatusTransition[] = []
   let startAt = 0
   for (;;) {
-    const res = await fetch(
+    const res = await trackedFetch(
       `${JIRA_BASE}/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=100`,
       { headers: { Authorization: authHeader(), Accept: 'application/json' }, next: { revalidate: 900 } }
     )

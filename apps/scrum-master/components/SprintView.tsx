@@ -11,7 +11,7 @@ interface SquadSprints {
 }
 
 type SprintsResponse =
-  | { squads: Record<string, SquadSprints>; fetchedAt: string }
+  | { squads: Record<string, SquadSprints>; dataAsOf: string }
   | { error: string }
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -207,7 +207,8 @@ export function SprintView({ squads: squadList }: { squads: Squad[] }) {
   return (
     <div>
       <p className="text-[11px] text-slate-400 mb-3">
-        Committed = scope at sprint start. Work added after the start is shown separately and doesn&apos;t count toward the percentage.
+        Committed = scope at sprint start. Work added after the start is shown separately and doesn&apos;t count toward the percentage.{' '}
+        Data as of {new Date(data.dataAsOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (refreshes from Jira every 15 min; reload the page to pick up the latest).
       </p>
       <div className="grid grid-cols-2 gap-4 items-start">
         {squadList.map(squad => {

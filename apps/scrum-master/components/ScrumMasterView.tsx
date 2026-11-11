@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { Squad, SquadScrumStats } from '@/lib/scrum'
 
 type ScrumResponse =
-  | { squads: Record<string, SquadScrumStats>; fetchedAt: string }
+  | { squads: Record<string, SquadScrumStats>; dataAsOf: string }
   | { error: string }
 
 function staleBadgeClass(daysStuck: number) {
@@ -47,14 +47,14 @@ export function ScrumMasterView({ squads: squadList }: { squads: Squad[] }) {
     )
   }
 
-  const { squads, fetchedAt } = data
+  const { squads, dataAsOf } = data
 
   return (
     <div>
       <div className="flex items-center mb-3">
         <p className="text-[11px] text-slate-400">
-          Time in status and stuck tickets reflect tickets currently in flight (past To Do, not yet Done). Updated{' '}
-          {new Date(fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          Time in status and stuck tickets reflect tickets currently in flight (past To Do, not yet Done). Data as of{' '}
+          {new Date(dataAsOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (refreshes from Jira every 15 min; reload the page to pick up the latest).
         </p>
       </div>
 
